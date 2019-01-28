@@ -1,6 +1,9 @@
 # Prerequisites
 *.d
 
+a.out
+runlua
+
 # Object files
 *.o
 *.ko
