@@ -26,7 +26,12 @@ int main(int argc, char * argv[])
     DO_REGISTER(L, cmath);
     DO_REGISTER(L, cjson);
     
-    if (0 != luaL_loadfile(L, "main.lua")) {
+    if (argc < 2) {
+        printf("input lua script file\n");
+        return 0;
+    }
+    
+    if (0 != luaL_loadfile(L, argv[1])) {
         printf("load lua error:%s\n", lua_tostring(L, -1));
         return 0;
     }
