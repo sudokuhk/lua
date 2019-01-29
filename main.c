@@ -17,6 +17,8 @@
 
 DECLARE_REGISTER(cmath);
 DECLARE_REGISTER(cjson);
+DECLARE_REGISTER(cnetwork);
+DECLARE_REGISTER(cmemory);
 
 int main(int argc, char * argv[])
 {
@@ -25,6 +27,8 @@ int main(int argc, char * argv[])
     
     DO_REGISTER(L, cmath);
     DO_REGISTER(L, cjson);
+    DO_REGISTER(L, cnetwork);
+    DO_REGISTER(L, cmemory);
     
     if (argc < 2) {
         printf("input lua script file\n");
