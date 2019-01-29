@@ -244,18 +244,16 @@ static int l_recv_string(lua_State * L)
     CHECK(1, number);
     fd = lua_tonumber(L, 1);
     
-    
     while (1) {
         int n = recvn(fd, &c, 1);
         if (n < 0) {
             goto error;
         }
         
+        buffer[nread ++] = c;
         if (c == '\n' || c == '\0') {
             break;
         }
-        
-        buffer[nread ++] = c;
         
         if (nread >= nbuffer) {
             nbuffer += 4096;
