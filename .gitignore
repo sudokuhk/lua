@@ -3,6 +3,7 @@
 
 a.out
 runlua
+.DS_Store
 
 # Object files
 *.o
