@@ -27,7 +27,8 @@ do
         "GET " .. url["path"] .. " HTTP/1.1\r\n" ..
         "Accept-Encoding: gzip, deflate\r\n" ..
         "Accept-Language: zh-CN,zh;q=0.9,en;q=0.8\r\n" ..
-        "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.77 Safari/537.36\r\n" ..
+        "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_5) AppleWebKit/537.36" ..
+        " (KHTML, like Gecko) Chrome/70.0.3538.77 Safari/537.36\r\n" ..
         "Host: " .. url["host"] ..
         "Date: CST " .. os.date("%Y-%m-%d %H:%M:%S", os.time()) ..
         "Connection: keep-alive\r\n" ..
@@ -94,10 +95,13 @@ do
     -- receive body
     if response["length"] > 0 then
         local length = response["length"];
+        local file = cfile.open("test.mp4", "wb");
         buffer = cmemory.alloc(length);
         nrecv = cnetwork.recv_data(socket, buffer, length);
-        print(nrecv);
+        print("receive length:" .. nrecv);
+        cfile.write_data(file, buffer, nrecv);
         cmemory.free(buffer);
+        cfile.close(file);
     end
     
     if response["keepalive"] == false then
