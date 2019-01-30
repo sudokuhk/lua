@@ -106,7 +106,7 @@ static int sendn(int fd, void * data, int size)
             break;
         }
         
-        int once = send(fd, data, size, 0);
+        int once = send(fd, p, size - nsend, 0);
         if (once < 0 && errno != EAGAIN) {
             nsend = -1;
             break;
@@ -138,7 +138,7 @@ static int recvn(int fd, void * data, int size)
             break;
         }
         
-        int once = recv(fd, data, size, 0);
+        int once = recv(fd, p, size - nrecv, 0);
         if (once < 0 && errno != EAGAIN) {
             nrecv = -1;
             break;
@@ -230,7 +230,7 @@ static int l_recv_data(lua_State * L)
 
     nread = recvn(fd, buf, want);    
 error:
-    printf("recv_data:%d\n", nread);
+    //printf("recv_data:%d\n", nread);
     lua_pushnumber(L, nread);
     return 1;
 }
@@ -291,7 +291,7 @@ static int l_send_data(lua_State * L)
     }
     
 error:
-    printf("send:%d\n", nsend);
+    //printf("send:%d\n", nsend);
     lua_pushnumber(L, nsend);
     return 1;
 }
@@ -312,7 +312,7 @@ static int l_send_string(lua_State * L)
     }
     
 error:
-    printf("fd:%d, send:%d\n", fd, nsend);
+    //printf("fd:%d, send:%d\n", fd, nsend);
     lua_pushnumber(L, nsend);
     return 1;
 }
@@ -321,13 +321,16 @@ static int l_disconnect(lua_State * L)
 {
     const char * sz_error = "no error";
     CHECK(1, number);   //fd
+    
     int fd = lua_tonumber(L, 1);
     printf("disconnect:%d\n", fd);
     if (fd > 0) {
         close(fd);
     }
+    return 0;
     
 error:
+    printf("error, not number\n");
     return 0;
 }
 

@@ -4,6 +4,7 @@
 a.out
 runlua
 .DS_Store
+*.mp4
 
 # Object files
 *.o
