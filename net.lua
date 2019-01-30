@@ -114,3 +114,6 @@ do
 end
 
 cnetwork.disconnect(socket);
+
+local dir = cdir.list(".");
+print_table(dir);

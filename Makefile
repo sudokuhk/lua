@@ -26,7 +26,7 @@ FPIC=-c
 LD_LIBS = -ldl -lm -llua
 #-------------------
 
-SRCS = main.c cmath.c cJSON.c json.c network.c memory.c url.c file.c
+SRCS = main.c cmath.c cJSON.c json.c network.c memory.c url.c file.c dir.c
 SRC_OBJECT := $(patsubst %.c,%.o,$(SRCS))
 
 .PHONY:all
