@@ -16,14 +16,15 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <string.h>
 
 static void push_item(lua_State * L, const char * name, struct stat * sb)
 {
+    const char * type = "unknown";    
     lua_pushstring(L, name);
     lua_newtable(L);
     {
-        lua_pushstring(L, "type");        
-        const char * type = "unknown";
+        lua_pushstring(L, "type");                
         switch (sb->st_mode & S_IFMT) {
             case S_IFIFO:   type = "fifo";      break;
             case S_IFCHR:   type = "character"; break;
@@ -62,8 +63,10 @@ static int l_list(lua_State * L)
     lua_newtable(L);    
     while ((entry = readdir(dp)) != NULL) {
         lstat(entry->d_name, &sb);
-        if (strcmp(entry->d_name, ".") == 0 || 
-            strcmp(entry->d_name, "..") == 0 ) { 
+        if (strlen(entry->d_name) == 0 || 
+            (strlen(entry->d_name) == 1 && entry->d_name[0] == '.') ||
+            (strlen(entry->d_name) == 2 && entry->d_name[0] == '.' 
+             && entry->d_name[1] == '.')) { 
             continue;
         }
         

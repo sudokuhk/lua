@@ -17,6 +17,7 @@
 #define DECLARE_REGISTER(name)  DECLARE_IN(name, EXT_C)
 
 #define DEFINE_IN(name, tab, ext)           \
+DECLARE_REGISTER(name);                     \
 ext int name##_register(lua_State * L) {    \
     luaL_newlib(L, tab);                    \
     lua_setglobal(L, #name);                \

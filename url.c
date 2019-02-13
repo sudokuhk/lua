@@ -11,6 +11,7 @@
 #include <lauxlib.h>
 #include <string.h>
 #include <stdlib.h>
+#include <ctype.h>
 
 #define SAFE_FREE(p)        \
     do {                    \
@@ -247,12 +248,13 @@ static void build_table(lua_State * L, const url_t * url)
 static int l_parse(lua_State * L)
 {
     url_t url;
+    const char * sz_url = NULL;
     
     if (lua_isstring(L, 1) != 1) {
         goto error;
     }
     
-    const char * sz_url = lua_tostring(L, 1);
+    sz_url = lua_tostring(L, 1);
     if (sz_url == NULL) {
         goto error;
     }

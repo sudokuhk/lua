@@ -55,9 +55,9 @@ static void push_item(lua_State * L, cJSON * item)
 {
     lua_pushstring(L, item->string);
     if (((item->type) & 255) == cJSON_Array) {
+        int i, nsize = cJSON_GetArraySize(item);
         lua_newtable(L);
         
-        int i, nsize = cJSON_GetArraySize(item);
         for (i = 0; i < nsize; i++) {
             cJSON * array = cJSON_GetArrayItem(item, i);
             lua_pushnumber(L, i);
@@ -73,34 +73,38 @@ static void push_item(lua_State * L, cJSON * item)
 
 static int build_table(lua_State * L, cJSON * root)
 {
-    lua_newtable(L);
     int i, nsize = cJSON_GetArraySize(root);
+    lua_newtable(L);
     for (i = 0; i < nsize; i++) {
         cJSON * item = cJSON_GetArrayItem(root, i);
         push_item(L, item);
     }
+    return 0;
 }
 
 static int parse(lua_State * L)
 {
-    const char * sz_error = "no error";
+    const char * sz_error = "no error", *sz_json;
+    cJSON * root = NULL;
+    
     if (lua_isstring(L, 1) != 1) { 
         sz_error = "invalid parameter for index 1, need string\n";
         goto error;
     }
     
-    const char * sz_json = lua_tostring(L, 1);
+    sz_json = lua_tostring(L, 1);
     if (sz_json == NULL) {
         sz_error = "invalid parameter for index 1, NULL string\n";
         goto error;
     }
     
-    cJSON * root = cJSON_Parse(sz_json);    
+    root = cJSON_Parse(sz_json);
     if (root == NULL) {
         sz_error = "parse json failed\n";
         goto error;
     }
     
+    cJSON_Delete(root);
     lua_pushnumber(L, 0);
     build_table(L, root);
     lua_pushstring(L, sz_error);
