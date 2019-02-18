@@ -27,6 +27,24 @@
         goto error; \
     }  
 
+typedef struct socket_t
+{
+    int i_sock;
+    
+    char * p_host;
+    int i_port;
+    
+    int i_capacity;
+    int i_head, i_tail;
+    int i_read, i_write;
+    char * p_buffer;
+    
+    int i_linesize;
+    char * p_line;
+    
+    int i_timeout;
+} socket_t;
+
 static int is_nonblock(int fd)
 {
     if (fd < 0) {
@@ -118,7 +136,7 @@ static int sendn(int fd, void * data, int size)
     return nsend;
 }
 
-static int recvn(int fd, void * data, int size)
+static int recvn(int fd, void * data, int size, int completed)
 {
     int nrecv = 0;
     char * p = (char *)data;
@@ -146,6 +164,9 @@ static int recvn(int fd, void * data, int size)
         
         nrecv += once;
         p += once;
+        if (!completed) {
+            break;
+        }
     }
     return nrecv;
 }
@@ -158,6 +179,7 @@ static int l_connect(lua_State * L)
     struct addrinfo hints;
     struct addrinfo *result, *rp;
     struct sockaddr addr;
+    socket_t * psock = NULL;
     
     CHECK(1, string);   //ip
     CHECK(2, number);   //port
@@ -201,14 +223,22 @@ static int l_connect(lua_State * L)
     }
     
     printf("connect ok\n");
-    lua_pushnumber(L, fd);
+    psock = (socket_t *)malloc(sizeof(socket_t));
+    memset(psock, 0, sizeof(socket_t));
+    psock->i_sock = fd;
+    psock->i_capacity = 4096;
+    psock->p_buffer = (char *)malloc(psock->i_capacity + 1);
+    psock->p_buffer[psock->i_capacity] = '\0';
+    psock->i_linesize = 4096;
+    psock->p_line = (char *)malloc(psock->i_linesize + 1);
+    lua_pushlightuserdata(L, psock);
     return 1;
     
 error:
     if (fd > 0) {
         close(fd);
     }
-    lua_pushnumber(L, -1);
+    lua_pushnil(L);
     return 1;
 }
 
@@ -216,19 +246,33 @@ static int l_recv_data(lua_State * L)
 {
     const char * sz_error = "no error";
     int nread = 0;
-    int fd = -1, want = 0;
+    int want = 0, n;
+    socket_t * p_sock = NULL;
     
-    CHECK(1, number);   //fd
+    CHECK(1, lightuserdata);
     if (lua_isuserdata(L, 2) != 1 && lua_islightuserdata(L, 2) != 1) {
         goto error;
     }
     CHECK(3, number);   //want
-    
-    fd = lua_tonumber(L, 1);
+    p_sock = (socket_t *)lua_touserdata(L, 1);
     char * buf = lua_touserdata(L, 2);
     want = lua_tonumber(L, 3);
 
-    nread = recvn(fd, buf, want);    
+    n = p_sock->i_tail - p_sock->i_head;
+    if (n > 0) {
+        int npick = n > want ? want : n;
+        memcpy(buf, p_sock->p_buffer + p_sock->i_head, npick);
+        p_sock->i_head += npick;
+        nread = npick;
+    }
+    if (want - nread > 0) {
+        int nget = recvn(p_sock->i_sock, buf + n, want - n, 1);
+        if (nget > 0) {
+            nread += nget;
+        } else {
+            nread = -1;
+        }
+    }
 error:
     //printf("recv_data:%d\n", nread);
     lua_pushnumber(L, nread);
@@ -238,36 +282,64 @@ error:
 static int l_recv_string(lua_State * L)
 {
     const char * sz_error = "no error";
-    int nread = 0, fd = -1, nbuffer = 4096;
-    char c;
-    char * buffer = (char *)malloc(nbuffer);    
-    CHECK(1, number);
-    fd = lua_tonumber(L, 1);
+    int nread = 0, i = 0, n = 0, nstr = 0, tail = 0;
+    socket_t * p_sock = NULL;
+    
+    CHECK(1, lightuserdata);
+    p_sock = (socket_t *)lua_touserdata(L, 1);
+    
+    n = p_sock->i_tail - p_sock->i_head;
+    if (n > 0) {
+        for (i = 0; i < n; i++) {
+            char c = p_sock->p_buffer[p_sock->i_head + i];
+            if (c == '\n' || c == '\0') {
+                tail = p_sock->i_head;
+                goto got_line;
+            }
+        }
+    } else {
+        p_sock->i_tail = p_sock->i_head = 0;
+    }
+    
+    if (p_sock->i_tail == p_sock->i_capacity) {
+        memmove(p_sock->p_buffer, p_sock->p_buffer + p_sock->i_head, n);
+    }
     
     while (1) {
-        int n = recvn(fd, &c, 1);
+        char * ptr = p_sock->p_buffer + p_sock->i_tail;
+        int i_remain = p_sock->i_capacity - p_sock->i_tail;
+        
+        n = recvn(p_sock->i_sock, ptr, i_remain, 0);
+        printf("recvn:%d\n", n);
         if (n < 0) {
             goto error;
         }
         
-        buffer[nread ++] = c;
-        if (c == '\n' || c == '\0') {
-            break;
-        }
-        
-        if (nread >= nbuffer) {
-            nbuffer += 4096;
-            buffer = (char *)realloc(buffer, nbuffer);
+        for (i = 0; i < n; i++) {
+            char c = p_sock->p_buffer[p_sock->i_tail + i];
+            if (c == '\n' || c == '\0') {
+                tail = p_sock->i_tail;
+                goto got_line;
+            }
         }
     }
     
-    buffer[nread ++] = '\0';
-    lua_pushstring(L, buffer);
-    free(buffer);
+got_line:    
+    nstr = tail + i - p_sock->i_head + 1;
+    memcpy(p_sock->p_line, 
+           p_sock->p_buffer + p_sock->i_head,
+           nstr);
+    if (tail == p_sock->i_tail) {
+        p_sock->i_tail += n;
+    }
+    p_sock->i_head += nstr;
+    p_sock->p_line[nstr] = '\0';
+    //printf("line:[%s]\n", p_sock->p_line);
+    
+    lua_pushstring(L, p_sock->p_line);
     return 1;
 error:
     lua_pushnil(L);
-    free(buffer);
     return 1;
 }
 
@@ -276,18 +348,18 @@ static int l_send_data(lua_State * L)
     const char * sz_error = "no error";
     int nsend = 0;
     
-    CHECK(1, number);       //fd
+    CHECK(1, lightuserdata);
     if (lua_isuserdata(L, 2) != 1 && lua_islightuserdata(L, 2) != 1) {
         goto error;
     }
     CHECK(3, number); 
     
-    int fd = lua_tonumber(L, 1);
+    socket_t * p_sock = (socket_t * )lua_touserdata(L, 1);
     void * data = (void *)lua_touserdata(L, 2);
     int size = lua_tonumber(L, 3);
     
-    if (fd > 0) {
-        nsend = sendn(fd, data, size);
+    if (p_sock->i_sock > 0) {
+        nsend = sendn(p_sock->i_sock, data, size);
     }
     
 error:
@@ -301,14 +373,19 @@ static int l_send_string(lua_State * L)
     const char * sz_error = "no error";
     int nsend = -1;
     
-    CHECK(1, number);
+    CHECK(1, lightuserdata);
     CHECK(2, string); 
     
-    int fd = lua_tonumber(L, 1);
+    socket_t * p_sock = (socket_t * )lua_touserdata(L, 1);
     const char * str = lua_tostring(L, 2);
     
-    if (fd > 0) {
-        nsend = sendn(fd, (void *)str, strlen(str));
+    if (p_sock->i_sock > 0) {
+        int len = strlen(str);
+        if (len > 0) {
+            nsend = sendn(p_sock->i_sock, (void *)str, strlen(str));
+        } else {
+            nsend = 0;
+        }
     }
     
 error:
@@ -320,17 +397,21 @@ error:
 static int l_disconnect(lua_State * L)
 {
     const char * sz_error = "no error";
-    CHECK(1, number);   //fd
+    CHECK(1, lightuserdata);
     
-    int fd = lua_tonumber(L, 1);
-    printf("disconnect:%d\n", fd);
-    if (fd > 0) {
-        close(fd);
+    socket_t * p_sock = (socket_t * )lua_touserdata(L, 1);
+    printf("disconnect:%d\n", p_sock->i_sock);
+    if (p_sock->i_sock > 0) {
+        close(p_sock->i_sock);
     }
-    return 0;
-    
+    if (p_sock->p_buffer != NULL) {
+        free(p_sock->p_buffer);
+    }
+    if (p_sock->p_line != NULL) {
+        free(p_sock->p_line);
+    }
+    free(p_sock);
 error:
-    printf("error, not number\n");
     return 0;
 }
 

@@ -15,14 +15,6 @@
 #include <lualib.h>
 #include <lauxlib.h>
 
-DECLARE_REGISTER(cmath);
-DECLARE_REGISTER(cjson);
-DECLARE_REGISTER(cnetwork);
-DECLARE_REGISTER(cmemory);
-DECLARE_REGISTER(curl);
-DECLARE_REGISTER(cfile);
-DECLARE_REGISTER(cdir);
-
 int main(int argc, char * argv[])
 {
     lua_State* L = luaL_newstate();
@@ -35,6 +27,7 @@ int main(int argc, char * argv[])
     DO_REGISTER(L, curl);
     DO_REGISTER(L, cfile);
     DO_REGISTER(L, cdir);
+    DO_REGISTER(L, cos);
     
     if (argc < 2) {
         printf("input lua script file\n");

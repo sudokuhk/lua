@@ -74,7 +74,7 @@ static int l_write_data(lua_State * L)
     FILE * fp = (FILE *)lua_touserdata(L, 1);
     void * buf = (void *)lua_touserdata(L, 2);
     int size = lua_tonumber(L, 3);
-    printf("fp:%p, buf:%p, size:%d\n", fp, buf, size);
+    //printf("fp:%p, buf:%p, size:%d\n", fp, buf, size);
     n = fwrite(buf, size, 1, fp);
     
 error:

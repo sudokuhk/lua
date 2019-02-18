@@ -25,5 +25,9 @@ ext int name##_register(lua_State * L) {    \
 }
 #define DEFINE_REGISTER(name, tab)   DEFINE_IN(name, tab, EXT_C)
 
-#define DO_REGISTER(L, name) name##_register(L)
-    
+#define DO_REGISTER(L, name)    \
+    do {                        \
+        DECLARE_REGISTER(name);  \
+        name##_register(L);     \
+    } while (0)
+        

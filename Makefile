@@ -26,7 +26,8 @@ FPIC=-c
 LD_LIBS = -ldl -lm -llua
 #-------------------
 
-SRCS = main.c cmath.c cJSON.c json.c network.c memory.c url.c file.c dir.c
+SRCS = main.c cmath.c cJSON.c json.c network.c memory.c url.c \
+    file.c dir.c ffmpeg_lua.c os.c
 SRC_OBJECT := $(patsubst %.c,%.o,$(SRCS))
 
 .PHONY:all
@@ -36,7 +37,7 @@ $(TARGET):$(SRC_OBJECT)
 	$(CC) -g -O0 $^ $(LD_LIBS) -I. -o $@
 
 %.o : %.c
-	$(CC) -g -O0 -I. -c $^ -o $@
+	$(CC) -g -O0 -I. -c -DTEST_FFMPEG $^ -o $@
     
 clean:
 	-$(RM) $(TARGET)
